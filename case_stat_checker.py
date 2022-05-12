@@ -90,7 +90,7 @@ def create_steam_auth_session():
         twofactorcode = input("Enter your 2FA code: ")
         login_params["twofactorcode"] = twofactorcode
     else:
-        email_code = input("Enter your email confirmation code:")
+        email_code = input("Enter your email confirmation code: ")
         login_params["emailauth"] = email_code
 
     response = session.post("https://steamcommunity.com/login/home/dologin",
@@ -181,6 +181,7 @@ def get_inventory_history(session):
             for i in range(40, 0, -1):
                 print(f"\rWaiting for {i} seconds due to rate limit", end="")
                 time.sleep(1)
+            print("\r                                                           ", end="")
             print("\rContinuing")
             continue
         response_JSON = json.loads(response.text)
@@ -217,18 +218,27 @@ def get_case_stats(inventory_history, item_json):
     return weapon_cases, drops
 
 def print_case_stats(cases):
+    print()
     ret_string = ""
-    ret_string += f"Total amount of cases opened: {len(cases.index)}\n"
-    ret_string += "\n"
+    total_case_count = len(cases.index)
+    ret_string += f"Total amount of cases opened: {total_case_count}\n"
+    #ret_string += "\n"
     #for case_type in cases["case_name"].unique():
     #    ret_string += f'{case_type}: {len(cases[cases["case_name"]==case_type])}\n'
 
-    ret_string += (f'Knives: {len(cases[cases["new_item_name"].str.contains("★")])}\n')
     weapon_cases_noknife = cases[~cases["new_item_name"].str.contains("★")]
-    ret_string += (f'Covert: {len(weapon_cases_noknife[weapon_cases_noknife["new_item_rarity"].str.contains("Covert")])}\n')
-    ret_string += (f'Classified: {len(cases[cases["new_item_rarity"].str.contains("Classified")])}\n')
-    ret_string += (f'Restricted: {len(cases[cases["new_item_rarity"].str.contains("Restricted")])}\n')
-    ret_string += (f'Mil-Spec Grade: {len(cases[cases["new_item_rarity"].str.contains("Mil-Spec Grade")])}\n')
+
+    knive_count = len(cases[cases["new_item_name"].str.contains("★")])
+    red_count = len(weapon_cases_noknife[weapon_cases_noknife["new_item_rarity"].str.contains("Covert")])
+    pink_count = len(cases[cases["new_item_rarity"].str.contains("Classified")])
+    purple_count = len(cases[cases["new_item_rarity"].str.contains("Restricted")])
+    blue_count = len(cases[cases["new_item_rarity"].str.contains("Mil-Spec Grade")])
+
+    ret_string += (f'Knives:         \t{knive_count}\t({(knive_count/total_case_count)*100:.2f}%)    \tOdds:\t0.26%\n')
+    ret_string += (f'Covert:         \t{red_count}\t({(red_count/total_case_count)*100:.2f}%)    \tOdds:\t0.64%\n')
+    ret_string += (f'Classified:     \t{pink_count}\t({(pink_count/total_case_count)*100:.2f}%)    \tOdds:\t3.20%\n')
+    ret_string += (f'Restricted:     \t{purple_count}\t({(purple_count/total_case_count)*100:.2f}%)    \tOdds:\t15.98%\n')
+    ret_string += (f'Mil-Spec Grade: \t{blue_count}\t({(blue_count/total_case_count)*100:.2f}%)    \tOdds:\t79.92%\n')
 
     return ret_string
 
