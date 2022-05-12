@@ -15,7 +15,7 @@ def get_variable_from_html(var_name, htm_string):
 def get_json_variable_from_html(var_name, htm_string):
     start = htm_string.find(var_name)
     var_string = htm_string[start:].split("\n")[0]
-    var_string = var_string.split("=")[1]
+    var_string = var_string[var_string.find("=")+1:]
     var_string = var_string.lstrip()
     if var_string[-1]==";":
         var_string = var_string[:-1]
