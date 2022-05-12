@@ -84,7 +84,7 @@ def create_steam_auth_session():
 
     if not require_email and not require_twofactor:
         print("Session could not be established, wrong password or username")
-        exit(-1)
+        return None
     
     if require_twofactor:
         twofactorcode = input("Enter your 2FA code: ")
@@ -234,6 +234,8 @@ def print_case_stats(cases):
 
 def main():
     session = create_steam_auth_session()
+    if session is None:
+        return -1
     inventory_history, item_json = get_inventory_history(session)
     cases, drops = get_case_stats(inventory_history, item_json)
     stats_string = print_case_stats(cases)
@@ -241,7 +243,6 @@ def main():
     clippy = input("Do you want to copy the results to clipboard?: ")
     if clippy == "yes" or clippy=="y":
         pyperclip.copy(stats_string)
-    exit()
 
 if __name__ == "__main__":
     main()
