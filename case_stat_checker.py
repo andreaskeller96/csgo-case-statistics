@@ -16,11 +16,14 @@ from util.crypto import encrypt_data
 from util.html_tools import get_variable_from_html, get_json_variable_from_html
 
 
-def create_steam_auth_session():
+def create_steam_auth_session(user=None, password=None, captcha=None, captcha_gid=None):
     session = requests.Session()
     response = session.get("https://steamcommunity.com/login/home/?goto=")
-    user = input("Steam Username: ")
-    password = getpass.getpass("Password: ")
+    
+    if user is None:
+        user = input("Steam Username: ")
+    if password is None:
+        password = getpass.getpass("Password: ")
     login_params = {
         "username": user
     }
@@ -38,8 +41,12 @@ def create_steam_auth_session():
     encrypted_password = encrypt_data(password, rsa_key)
     
     twofactorcode = ""
-    m_gidCaptcha = "-1"
+    gidCaptcha = "-1"
     captchaText = ""
+    if captcha is not None:
+        captchaText = captcha
+    if captcha_gid is not None:
+        gidCaptcha = captcha_gid
     m_steamidEmailAuth = ""
     m_unRequestedTokenType = "-1"
     login_params = {
@@ -49,18 +56,13 @@ def create_steam_auth_session():
         "twofactorcode": twofactorcode,
         "emailauth":"",
         "loginfriendlyname":"",
-        "captchagid":m_gidCaptcha,
+        "captchagid":gidCaptcha,
         "captcha_text":captchaText,
         "emailsteamid":m_steamidEmailAuth,
         "rsatimestamp":responseJSON["timestamp"],
         "remember_login": 'false',
         "tokentype": m_unRequestedTokenType
         
-    }
-    
-    header = {
-        "Content-Type":"application/x-www-form-urlencoded; charset=UTF-8",
-        "User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.82 Safari/537.36"
     }
     
     
@@ -81,15 +83,30 @@ def create_steam_auth_session():
     if "emailauth_needed" in responseJSON:
         if responseJSON["emailauth_needed"] == True:
             require_email = True
+    
+    require_captcha = False
+
+    if "captcha_needed" in responseJSON:
+        if responseJSON["captcha_needed"] == True:
+            require_captcha = True
+
+    if require_captcha:
+        print("You need to solve this captcha first:")
+        print(f"https://steamcommunity.com/login/rendercaptcha/?gid={responseJSON['captcha_gid']}")
+        captcha = input("Enter the solution to the captcha: ")
+        return create_steam_auth_session(user=user, password=password, captcha=captcha, captcha_gid=responseJSON['captcha_gid'])
+
+        
 
     if not require_email and not require_twofactor:
         print("Session could not be established, wrong password or username")
+        print(responseJSON)
         return None
     
     if require_twofactor:
         twofactorcode = input("Enter your 2FA code: ")
         login_params["twofactorcode"] = twofactorcode
-    else:
+    if require_email:
         email_code = input("Enter your email confirmation code: ")
         login_params["emailauth"] = email_code
 
@@ -178,8 +195,8 @@ def get_inventory_history(session):
         response = session.get(profile_link+"/inventoryhistory/", params=req_data)
         if response.status_code != 200:
             print("")
-            for i in range(40, 0, -1):
-                print(f"\rWaiting for {i} seconds due to rate limit", end="")
+            for i in range(35, 0, -1):
+                print(f"\rWaiting for {i:02d} seconds due to rate limit", end="")
                 time.sleep(1)
             print("\r                                                           ", end="")
             print("\rContinuing")
@@ -218,7 +235,6 @@ def get_case_stats(inventory_history, item_json):
     return weapon_cases, drops
 
 def print_case_stats(cases):
-    print()
     ret_string = ""
     total_case_count = len(cases.index)
     ret_string += f"Total amount of cases opened: {total_case_count}\n"
@@ -234,13 +250,20 @@ def print_case_stats(cases):
     purple_count = len(cases[cases["new_item_rarity"].str.contains("Restricted")])
     blue_count = len(cases[cases["new_item_rarity"].str.contains("Mil-Spec Grade")])
 
-    ret_string += (f'Knives:         \t{knive_count}\t({(knive_count/total_case_count)*100:.2f}%)    \tOdds:\t0.26%\n')
-    ret_string += (f'Covert:         \t{red_count}\t({(red_count/total_case_count)*100:.2f}%)    \tOdds:\t0.64%\n')
-    ret_string += (f'Classified:     \t{pink_count}\t({(pink_count/total_case_count)*100:.2f}%)    \tOdds:\t3.20%\n')
-    ret_string += (f'Restricted:     \t{purple_count}\t({(purple_count/total_case_count)*100:.2f}%)    \tOdds:\t15.98%\n')
-    ret_string += (f'Mil-Spec Grade: \t{blue_count}\t({(blue_count/total_case_count)*100:.2f}%)    \tOdds:\t79.92%\n')
+    ret_string += (f'Knives:         {knive_count: =5d} ({(knive_count/total_case_count)*100:06.2f}%) - Odds:  0.26%\n')
+    ret_string += (f'Covert:         {red_count: =5d} ({(red_count/total_case_count)*100:06.2f}%) - Odds:  0.64%\n')
+    ret_string += (f'Classified:     {pink_count: =5d} ({(pink_count/total_case_count)*100:06.2f}%) - Odds:  3.20%\n')
+    ret_string += (f'Restricted:     {purple_count: =5d} ({(purple_count/total_case_count)*100:06.2f}%) - Odds: 15.98%\n')
+    ret_string += (f'Mil-Spec Grade: {blue_count: =5d} ({(blue_count/total_case_count)*100:06.2f}%) - Odds: 79.92%\n')
 
     return ret_string
+
+def print_coverts(cases):
+    coverts = cases[cases["new_item_rarity"].str.contains("Covert")]
+    print(coverts)
+    for cov in coverts.iterrows():
+            print(cov["new_items"]) 
+    pass
 
 def main():
     session = create_steam_auth_session()
@@ -253,7 +276,10 @@ def main():
     clippy = input("Do you want to copy the results to clipboard?: ")
     if clippy == "yes" or clippy=="y":
         pyperclip.copy(stats_string)
+    covs = input("Do you want to print the coverts to console?: ")
+    if covs == "yes" or covs=="y":
+        print_coverts(cases)
 
 if __name__ == "__main__":
     main()
-    input("Press any key to exit")
+    input("Press enter to exit")
