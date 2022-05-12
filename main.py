@@ -19,8 +19,8 @@ from util.html_tools import get_variable_from_html, get_json_variable_from_html
 def create_steam_auth_session():
     session = requests.Session()
     response = session.get("https://steamcommunity.com/login/home/?goto=")
-    user = input("Steam Username:")
-    password = getpass.getpass("Password:")
+    user = input("Steam Username: ")
+    password = getpass.getpass("Password: ")
     login_params = {
         "username": user
     }
@@ -87,7 +87,7 @@ def create_steam_auth_session():
         exit(-1)
     
     if require_twofactor:
-        twofactorcode = input("Enter your 2FA code:")
+        twofactorcode = input("Enter your 2FA code: ")
         login_params["twofactorcode"] = twofactorcode
     else:
         email_code = input("Enter your email confirmation code:")
@@ -191,7 +191,8 @@ def get_inventory_history(session):
         if "cursor" in response_JSON.keys():
             cursor = response_JSON["cursor"]
         else:
-            break  
+            break
+    print("\nFinished fetching Inventory History\n")
     return history, item_dict
 
 def get_case_stats(inventory_history, item_json):
