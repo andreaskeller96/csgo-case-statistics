@@ -134,8 +134,13 @@ def create_inventory_history_list(html_string):
             "lost_items": [],
         }
         date = row.find("div", "tradehistory_date").text.strip().split("\t")
+
+        date_str = ""
+        for element in date:
+            date_str+=element
+            date_str+= " "
     
-        history_element["timestamp"] = pd.to_datetime(date[0], infer_datetime_format=True).timestamp()
+        history_element["timestamp"] = pd.to_datetime(date_str, infer_datetime_format=True).timestamp()
         history_element["description"] = row.find("div", "tradehistory_event_description").text.strip()
         item_changegroups = row.find_all("div", "tradehistory_items tradehistory_items_withimages")
         #print(history_element)
@@ -300,7 +305,8 @@ def main():
         cases_saving = cases[["time", "new_item_name", "case_name", "new_item_rarity"]]
         cases_saving = cases_saving.rename(columns={"new_item_name": "Weapon", "case_name": "Case", "new_item_rarity": "Rarity"}, errors="ignore")
         cases_saving.set_index("time",inplace=True)
-        cases_saving.to_csv("case_rewards.csv")
+
+        cases_saving.to_csv(f"{int(time.time())}_case_rewards.csv")
 
 if __name__ == "__main__":
     main()
