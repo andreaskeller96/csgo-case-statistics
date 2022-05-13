@@ -255,7 +255,7 @@ def print_case_stats(cases):
     return ret_string
 
 def print_coverts(cases):
-    knives = cases[cases["new_item_rarity"].str.contains("★")]
+    knives = cases[cases["new_item_name"].str.contains("★")]
     weapon_cases_noknife = cases[~cases["new_item_name"].str.contains("★")]
     coverts = weapon_cases_noknife[weapon_cases_noknife["new_item_rarity"].str.contains("Covert")]
 
