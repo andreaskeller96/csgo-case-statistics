@@ -134,14 +134,8 @@ def create_inventory_history_list(html_string):
             "lost_items": [],
         }
         date = row.find("div", "tradehistory_date").text.strip().split("\t")
-        date = [x for x in date if x]
-        day = int(date[0].split(" ")[0])
-        month = date[0].split(" ")[1][:-1]
-        year = int(date[0].split(" ")[-1])
-        hour = int(date[1].split(":")[0])
-        minute = int(date[1].split(":")[1][:-2])
-        ampm = date[1][-2:]
-        history_element["timestamp"] = time.mktime(datetime.datetime.strptime(f"{day:02d}/{month}/{year} {hour:02d}:{minute:02d} {ampm}", "%d/%b/%Y %H:%M %p").timetuple())
+    
+        history_element["timestamp"] = pd.to_datetime(date[0], infer_datetime_format=True).timestamp()
         history_element["description"] = row.find("div", "tradehistory_event_description").text.strip()
         item_changegroups = row.find_all("div", "tradehistory_items tradehistory_items_withimages")
         #print(history_element)
