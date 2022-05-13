@@ -4,7 +4,8 @@ A small script that parses your Steam Inventory History to show stats about how 
 # Release is built with pyinstaller
 
 # How to run the release
-Just double click the exe and follow the steps
+Download the newest release here: https://github.com/andreaskeller96/csgo-case-statistics/releases/latest
+Run the executable and follow the steps
 
 # How to run from source code
 1. Clone the repo
