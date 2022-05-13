@@ -195,7 +195,7 @@ def get_inventory_history(session):
         response = session.get(profile_link+"/inventoryhistory/", params=req_data)
         if response.status_code != 200:
             print("")
-            for i in range(35, 0, -1):
+            for i in range(40, 0, -1):
                 print(f"\rWaiting for {i:02d} seconds due to rate limit", end="")
                 time.sleep(1)
             print("\r                                                           ", end="")
@@ -250,20 +250,19 @@ def print_case_stats(cases):
     purple_count = len(cases[cases["new_item_rarity"].str.contains("Restricted")])
     blue_count = len(cases[cases["new_item_rarity"].str.contains("Mil-Spec Grade")])
 
-    ret_string += (f'Knives:         {knive_count: =5d} ({(knive_count/total_case_count)*100:06.2f}%) - Odds:  0.26%\n')
-    ret_string += (f'Covert:         {red_count: =5d} ({(red_count/total_case_count)*100:06.2f}%) - Odds:  0.64%\n')
-    ret_string += (f'Classified:     {pink_count: =5d} ({(pink_count/total_case_count)*100:06.2f}%) - Odds:  3.20%\n')
-    ret_string += (f'Restricted:     {purple_count: =5d} ({(purple_count/total_case_count)*100:06.2f}%) - Odds: 15.98%\n')
-    ret_string += (f'Mil-Spec Grade: {blue_count: =5d} ({(blue_count/total_case_count)*100:06.2f}%) - Odds: 79.92%\n')
+    ret_string += (f'Knives:         {knive_count: =5d} ({(knive_count/total_case_count)*100: =6.2f}%) - Odds:  0.26%\n')
+    ret_string += (f'Covert:         {red_count: =5d} ({(red_count/total_case_count)*100: =06.2f}%) - Odds:  0.64%\n')
+    ret_string += (f'Classified:     {pink_count: =5d} ({(pink_count/total_case_count)*100: =06.2f}%) - Odds:  3.20%\n')
+    ret_string += (f'Restricted:     {purple_count: =5d} ({(purple_count/total_case_count)*100: =06.2f}%) - Odds: 15.98%\n')
+    ret_string += (f'Mil-Spec Grade: {blue_count: =5d} ({(blue_count/total_case_count)*100: =06.2f}%) - Odds: 79.92%\n')
 
     return ret_string
 
 def print_coverts(cases):
     coverts = cases[cases["new_item_rarity"].str.contains("Covert")]
-    print(coverts)
-    for cov in coverts.iterrows():
-            print(cov["new_items"]) 
-    pass
+    #print(coverts)
+    for index, row in coverts.iterrows():
+            print(f'Opened {row["new_item_name"]} on {row["time"]}') 
 
 def main():
     session = create_steam_auth_session()
