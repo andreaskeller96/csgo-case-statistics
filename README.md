@@ -5,6 +5,7 @@ A small script that parses your Steam Inventory History to show stats about how 
 
 # How to run the release
 Download the newest release here: https://github.com/andreaskeller96/csgo-case-statistics/releases/latest
+
 Run the executable and follow the steps
 
 # How to run from source code
