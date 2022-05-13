@@ -168,7 +168,7 @@ def get_inventory_history(session):
     if response.status_code != 200:
         return None
     steamid = get_variable_from_html("g_steamID", response.text)
-    response = session.get(f"https://steamcommunity.com/profiles/{steamid}/inventoryhistory/?app[]=730")
+    response = session.get(f"https://steamcommunity.com/profiles/{steamid}/inventoryhistory/?app[]=730&l=english")
     if response.status_code != 200:
         return None
     profile_link = get_variable_from_html("g_strProfileURL", response.text).replace("\\", "")
@@ -187,6 +187,7 @@ def get_inventory_history(session):
         print(f"\rCurrently registered {len(history)} inventory changes", end="")
         req_data = {
             "ajax": "1",
+            "l": "english",
             "sessionid": sessionid,
         }
         for key in cursor:
