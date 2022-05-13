@@ -91,6 +91,8 @@ def create_steam_auth_session(user=None, password=None, captcha=None, captcha_gi
             require_captcha = True
 
     if require_captcha:
+        print("Steam requests a captcha, this is currently not implemented!")
+        return None
         print("You need to solve this captcha first:")
         print(f"https://steamcommunity.com/login/rendercaptcha/?gid={responseJSON['captcha_gid']}")
         captcha = input("Enter the solution to the captcha: ")
@@ -259,10 +261,23 @@ def print_case_stats(cases):
     return ret_string
 
 def print_coverts(cases):
-    coverts = cases[cases["new_item_rarity"].str.contains("Covert")]
-    #print(coverts)
+    knives = cases[cases["new_item_rarity"].str.contains("★")]
+    weapon_cases_noknife = cases[~cases["new_item_name"].str.contains("★")]
+    coverts = weapon_cases_noknife[weapon_cases_noknife["new_item_rarity"].str.contains("Covert")]
+
+    ret_string = ""
+
+    ret_string += ("Knives:\n")
+    for index, row in knives.iterrows():
+            ret_string += (f'Opened {row["new_item_name"]} on {row["time"]}\n') 
+        
+    ret_string += ("Coverts:\n")
+
     for index, row in coverts.iterrows():
-            print(f'Opened {row["new_item_name"]} on {row["time"]}') 
+            ret_string += (f'Opened {row["new_item_name"]} on {row["time"]}\n') 
+    
+    return ret_string
+
 
 def main():
     session = create_steam_auth_session()
@@ -275,9 +290,23 @@ def main():
     clippy = input("Do you want to copy the results to clipboard?: ")
     if clippy == "yes" or clippy=="y":
         pyperclip.copy(stats_string)
-    covs = input("Do you want to print the coverts to console?: ")
-    if covs == "yes" or covs=="y":
-        print_coverts(cases)
+
+    if len(cases[cases["new_item_rarity"].str.contains("Covert")])>0:
+        covs = input("Do you want to print the coverts to console?: ")
+        covert_string = print_coverts(cases)
+        if covs == "yes" or covs=="y":
+            print(covert_string)
+
+        clippy = input("Do you want to copy the coverts to clipboard?: ")
+        if clippy == "yes" or clippy=="y":
+            pyperclip.copy(covert_string)
+
+    save = input("Do you want to save your case opening history as csv?: ")
+    if save == "yes" or save=="y":
+        cases_saving = cases[["time", "new_item_name", "case_name", "new_item_rarity"]]
+        cases_saving = cases_saving.rename(columns={"new_item_name": "Weapon", "case_name": "Case", "new_item_rarity": "Rarity"}, errors="ignore")
+        cases_saving.set_index("time",inplace=True)
+        cases_saving.to_csv("case_rewards.csv")
 
 if __name__ == "__main__":
     main()
