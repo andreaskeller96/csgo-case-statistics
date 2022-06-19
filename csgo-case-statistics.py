@@ -1,27 +1,33 @@
-import requests
-import json
-from Crypto.PublicKey import RSA
-import time
-import datetime
-
+import requests, json, time, datetime, math, pyperclip, pickle, getpass
 import pandas as pd
 
+
+from Crypto.PublicKey import RSA
+from pathlib import Path
 from bs4 import BeautifulSoup
-
-import pyperclip
-
-import getpass
-
 from util.crypto import encrypt_data
 from util.html_tools import get_variable_from_html, get_json_variable_from_html
 
 
 def create_steam_auth_session(user=None, password=None, captcha=None, captcha_gid=None):
+    
     session = requests.Session()
     response = session.get("https://steamcommunity.com/login/home/?goto=")
     
     if user is None:
         user = input("Steam Username: ")
+    cookiefile = f"steam_sessioncookie_{user}.pkl"
+
+    if Path(cookiefile).is_file():
+        with open (cookiefile, "rb") as f:
+            session.cookies.update(pickle.load(f))
+        test_login = session.get("https://steamcommunity.com/")
+        steamid = get_variable_from_html("g_steamID", test_login.text)
+        #Check if the session is still valid
+        if not steamid is None and steamid.isnumeric():
+            print("Resuming previous session")
+            return session
+
     if password is None:
         password = getpass.getpass("Password: ")
     login_params = {
@@ -117,14 +123,16 @@ def create_steam_auth_session(user=None, password=None, captcha=None, captcha_gi
                  )
     responseJSON = json.loads(response.text)
     if responseJSON["success"] == True:
+        with open(cookiefile, "wb") as f:
+            pickle.dump(session.cookies, f)
         return session
     else:
         print("Login failed")
         print(responseJSON)
-    
-def create_inventory_history_list(html_string):
+
+def create_inventory_history_dict(html_string, full_hist):
     soup = BeautifulSoup(html_string, 'html.parser')
-    history_list = []
+    history_dict = {}
     rows = soup.find_all("div", "tradehistoryrow")
     for row in rows:
         history_element = {
@@ -140,7 +148,8 @@ def create_inventory_history_list(html_string):
             date_str+=element
             date_str+= " "
     
-        history_element["timestamp"] = pd.to_datetime(date_str, infer_datetime_format=True).timestamp()
+        history_element_timestamp = pd.to_datetime(date_str, infer_datetime_format=True).timestamp()
+        history_element["timestamp"] = history_element_timestamp
         history_element["description"] = row.find("div", "tradehistory_event_description").text.strip()
         item_changegroups = row.find_all("div", "tradehistory_items tradehistory_items_withimages")
         #print(history_element)
@@ -158,20 +167,47 @@ def create_inventory_history_list(html_string):
                 history_element["new_items"] += item_list
             elif item_type == "-":
                 history_element["lost_items"] += item_list
-        
-        history_list.append(history_element)
-    return history_list
+        new_name = f"{history_element_timestamp}_{history_element['description']}"
+        new_name_actual = new_name
+        i=0
+        while new_name_actual in history_dict or new_name_actual in full_hist:
+            new_name_actual = f"{new_name}_{i}"
+            i+=1
+        history_dict[new_name_actual] = history_element
+    return history_dict
 
 def get_inventory_history(session):
     print("Fetching Inventory History")
     response = session.get("https://steamcommunity.com/")
     if response.status_code != 200:
-        return None
+        return None, None
     steamid = get_variable_from_html("g_steamID", response.text)
+    if steamid is None:
+        return None, None
+    need_status_file = True
+    steamid_status = {}
+    #Check if we fetched this data before and have it stored
+    if Path(f"{steamid}_status.json").is_file():
+        with open (f"{steamid}_status.json", "r") as f:
+            try:
+                steamid_status = json.load(f)
+            except:
+                steamid_status = {}
+        if "newest_timestamp" in steamid_status and "complete_history" in steamid_status and "oldest_timestamp" in steamid_status:
+            need_status_file = False
+    #create new status file
+    if need_status_file:
+        steamid_status = {}
+        steamid_status["newest_timestamp"] = 0
+        steamid_status["complete_history"] = False
+        steamid_status["oldest_timestamp"] = 0
+        with open(f"{steamid}_status.json", "w") as f:
+            json.dump(steamid_status, f)
+
     response = session.get(f"https://steamcommunity.com/profiles/{steamid}/inventoryhistory/?app[]=730&l=english")
     if response.status_code != 200:
-        return None
-    profile_link = get_variable_from_html("g_strProfileURL", response.text).replace("\\", "")
+        return None, None
+    profile_link = get_variable_from_html("g_strProfileURL", response.text)
     sessionid = get_variable_from_html("g_sessionID", response.text)
     filter_apps = get_variable_from_html("g_rgFilterApps", response.text)
 
@@ -179,12 +215,53 @@ def get_inventory_history(session):
     cursor = get_variable_from_html("g_historyCursor", response.text)
     item_json = get_json_variable_from_html("g_rgDescriptions", response.text)
 
+    if None in [profile_link, sessionid, filter_apps, cursor, item_json]:
+        return None, None
+
+    profile_link = profile_link.replace("\\", "")
+    
     full_site = response.text
     item_dict = item_json["730"]
-    history = create_inventory_history_list(full_site)
+    try:
+        history = create_inventory_history_dict(full_site, {})
+    except:
+        return None, None
+    
+    cur_timestamp = math.floor(time.time())
+    
+    history_file = f"{steamid}_history.pkl"
+    dict_file = f"{steamid}_dict.pkl"
+    #Continue an incomplete history
+    incremental_load = False
+    if steamid_status["complete_history"]==True and Path(history_file).is_file() and Path(dict_file).is_file():
+        incremental_load = True
+        with open(history_file, "rb") as f:
+            old_history = pickle.load(f)
+        with open(dict_file, "rb") as f:
+            old_item_dict = pickle.load(f)
+        history = {**old_history, **history}
+        item_dict = {**old_item_dict, **item_dict}
+        #save current state to files
+        with open(history_file, "wb") as f:
+            pickle.dump(history, f)
+        with open(dict_file, "wb") as f:
+            pickle.dump(item_dict, f)
+        with open(f"{steamid}_status.json", "w") as f:
+            json.dump(steamid_status, f)
+    elif steamid_status["complete_history"]==False and steamid_status["oldest_timestamp"] != 0 and Path(history_file).is_file() and Path(dict_file).is_file():
+        print("Resuming interrupted fetch")
+        cursor["time"] = steamid_status["oldest_timestamp"]
+        with open(history_file, "rb") as f:
+            history = pickle.load(f)
+        with open(dict_file, "rb") as f:
+            item_dict = pickle.load(f)
 
     while True:
         print(f"\rCurrently registered {len(history)} inventory changes", end="")
+        cursor_timestamp = cursor["time"]
+        #Nothing new to fetch
+        if incremental_load and cursor_timestamp < steamid_status["newest_timestamp"]:
+            break
         req_data = {
             "ajax": "1",
             "l": "english",
@@ -198,25 +275,47 @@ def get_inventory_history(session):
         if response.status_code != 200:
             print("")
             for i in range(40, 0, -1):
-                print(f"\rWaiting for {i:02d} seconds due to rate limit", end="")
+                print(f"\rWaiting for {i:02d} seconds due to steam rate limit", end="")
                 time.sleep(1)
-            print("\r                                                           ", end="")
+            print("\r                                                                 ", end="")
             print("\rContinuing")
             continue
-        response_JSON = json.loads(response.text)
+        try:
+            response_JSON = json.loads(response.text)
+        except:
+            continue
+
         if "html" in response_JSON:
-            history += create_inventory_history_list(response_JSON["html"])
+            try:
+                additional_history = create_inventory_history_dict(response_JSON["html"], history)
+            except:
+                continue
+            history = {**history,  **additional_history}
         if "descriptions" in response_JSON:
             item_dict = {**item_dict, **response_JSON["descriptions"]["730"]}
-        if "cursor" in response_JSON.keys():
+        if "cursor" in response_JSON:
             cursor = response_JSON["cursor"]
+            if "time" in cursor:
+                steamid_status["oldest_timestamp"] = cursor["time"]
         else:
             break
+        #save current state to files
+        with open(history_file, "wb") as f:
+            pickle.dump(history, f)
+        with open(dict_file, "wb") as f:
+            pickle.dump(item_dict, f)
+        with open(f"{steamid}_status.json", "w") as f:
+            json.dump(steamid_status, f)
+    steamid_status["complete_history"] = True
+    steamid_status["newest_timestamp"] = cur_timestamp
+    with open(f"{steamid}_status.json", "w") as f:
+            json.dump(steamid_status, f)
+
     print("\nFinished fetching Inventory History\n")
     return history, item_dict
 
 def get_case_stats(inventory_history, item_json):
-    df = pd.DataFrame(inventory_history)
+    df = pd.DataFrame(inventory_history.values())
     df["time"] = pd.to_datetime(df['timestamp'],unit='s')
     #df.drop(["timestamp"], inplace=True)
     case_openings = df[df["description"]=="Unlocked a container"]
@@ -280,11 +379,18 @@ def print_coverts(cases):
 
 
 def main():
+    #Create Steam Authenticated Session
     session = create_steam_auth_session()
     if session is None:
         return -1
+    #Download the complete history
     inventory_history, item_json = get_inventory_history(session)
+    if None in [inventory_history, item_json]:
+        print("Error while fetching History")
+        return -1
+    #Process the history into dataframes
     cases, drops = get_case_stats(inventory_history, item_json)
+    #Print the results to console
     stats_string = print_case_stats(cases)
     print(stats_string)
     clippy = input("Do you want to copy the results to clipboard?: ")
@@ -296,10 +402,9 @@ def main():
         covert_string = print_coverts(cases)
         if covs == "yes" or covs=="y":
             print(covert_string)
-
-        clippy = input("Do you want to copy the coverts to clipboard?: ")
-        if clippy == "yes" or clippy=="y":
-            pyperclip.copy(covert_string)
+            clippy = input("Do you want to copy the coverts to clipboard?: ")
+            if clippy == "yes" or clippy=="y":
+                pyperclip.copy(covert_string)
 
     save = input("Do you want to save your case opening history as csv?: ")
     if save == "yes" or save=="y":
