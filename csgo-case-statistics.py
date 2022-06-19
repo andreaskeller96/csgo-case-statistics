@@ -1,9 +1,8 @@
-import requests, json, time, datetime, math, pyperclip, pickle, getpass
+import requests, json, time, datetime, math, pyperclip, pickle, getpass, os
 import pandas as pd
 
 
 from Crypto.PublicKey import RSA
-from pathlib import Path
 from bs4 import BeautifulSoup
 from util.crypto import encrypt_data
 from util.html_tools import get_variable_from_html, get_json_variable_from_html
@@ -18,7 +17,7 @@ def create_steam_auth_session(user=None, password=None, captcha=None, captcha_gi
         user = input("Steam Username: ")
     cookiefile = f"steam_sessioncookie_{user}.pkl"
 
-    if Path(cookiefile).is_file():
+    if os.path.isfile(cookiefile):
         with open (cookiefile, "rb") as f:
             session.cookies.update(pickle.load(f))
         test_login = session.get("https://steamcommunity.com/")
@@ -187,7 +186,7 @@ def get_inventory_history(session):
     need_status_file = True
     steamid_status = {}
     #Check if we fetched this data before and have it stored
-    if Path(f"{steamid}_status.json").is_file():
+    if os.path.isfile(f"{steamid}_status.json"):
         with open (f"{steamid}_status.json", "r") as f:
             try:
                 steamid_status = json.load(f)
@@ -233,7 +232,7 @@ def get_inventory_history(session):
     dict_file = f"{steamid}_dict.pkl"
     #Continue an incomplete history
     incremental_load = False
-    if steamid_status["complete_history"]==True and Path(history_file).is_file() and Path(dict_file).is_file():
+    if steamid_status["complete_history"]==True and os.path.isfile(history_file) and os.path.isfile(dict_file):
         incremental_load = True
         with open(history_file, "rb") as f:
             old_history = pickle.load(f)
@@ -248,7 +247,7 @@ def get_inventory_history(session):
             pickle.dump(item_dict, f)
         with open(f"{steamid}_status.json", "w") as f:
             json.dump(steamid_status, f)
-    elif steamid_status["complete_history"]==False and steamid_status["oldest_timestamp"] != 0 and Path(history_file).is_file() and Path(dict_file).is_file():
+    elif steamid_status["complete_history"]==False and steamid_status["oldest_timestamp"] != 0 and os.path.isfile(history_file) and os.path.isfile(dict_file):
         print("Resuming interrupted fetch")
         cursor["time"] = steamid_status["oldest_timestamp"]
         with open(history_file, "rb") as f:
