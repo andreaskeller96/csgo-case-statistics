@@ -179,9 +179,11 @@ def get_inventory_history(session):
     print("Fetching Inventory History")
     response = session.get("https://steamcommunity.com/")
     if response.status_code != 200:
+        print("Steam Community not reachable, check your internet connection and try again")
         return None, None
     steamid = get_variable_from_html("g_steamID", response.text)
     if steamid is None:
+        print("Steam Session failure")
         return None, None
     need_status_file = True
     steamid_status = {}
@@ -205,7 +207,9 @@ def get_inventory_history(session):
 
     response = session.get(f"https://steamcommunity.com/profiles/{steamid}/inventoryhistory/?app[]=730&l=english")
     if response.status_code != 200:
-        return None, None
+        print("Steam returned an error when trying to access inventory history, trying again in 5s")
+        time.sleep(5)
+        return get_inventory_history(session)
     profile_link = get_variable_from_html("g_strProfileURL", response.text)
     sessionid = get_variable_from_html("g_sessionID", response.text)
     filter_apps = get_variable_from_html("g_rgFilterApps", response.text)
