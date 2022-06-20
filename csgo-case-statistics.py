@@ -338,6 +338,8 @@ def print_case_stats(cases):
     ret_string = ""
     total_case_count = len(cases.index)
     ret_string += f"Total amount of cases opened: {total_case_count}\n"
+    if total_case_count==0:
+        return ret_string
     #ret_string += "\n"
     #for case_type in cases["case_name"].unique():
     #    ret_string += f'{case_type}: {len(cases[cases["case_name"]==case_type])}\n'
