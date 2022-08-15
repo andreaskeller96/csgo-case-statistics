@@ -323,6 +323,28 @@ def get_inventory_history(session):
     print("\nFinished fetching Inventory History\n")
     return history, item_dict
 
+def get_item_name(x, item_json):
+    class_instance = f'{x[0]["data-classid"]}_{x[0]["data-instanceid"]}'
+    if class_instance in item_json:
+        return item_json[class_instance]["market_name"]
+    else:
+        return class_instance
+
+def get_item_rarity(x, item_json):
+    class_instance = f'{x[0]["data-classid"]}_{x[0]["data-instanceid"]}'
+    if class_instance in item_json:
+        return next(item["name"] for item in item_json[class_instance]["tags"] if item["category"] == "Rarity")
+    else:
+        return class_instance
+
+def get_case_name (x, item_json):
+    class_instance = f'{x[0]["data-classid"]}_{x[0]["data-instanceid"]}'
+    
+    if class_instance in item_json:
+        return next(item for item in [ item_json[class_instance]["market_name"] for it in x] if "Key" not in item)
+    else:
+        return class_instance
+
 def get_case_stats(inventory_history, item_json):
     df = pd.DataFrame(inventory_history.values())
     df["time"] = pd.to_datetime(df['timestamp'],unit='s')
@@ -332,9 +354,9 @@ def get_case_stats(inventory_history, item_json):
     drops = drops.assign(item_name= drops["new_items"].map(lambda x: item_json[f'{x[0]["data-classid"]}_{x[0]["data-instanceid"]}']["market_name"]))
     drops = drops.assign(item_rarity = drops["new_items"].map(lambda x: next(item["name"] for item in item_json[f'{x[0]["data-classid"]}_{x[0]["data-instanceid"]}']["tags"] if item["category"] == "Rarity")))
 
-    case_openings = case_openings.assign(new_item_name = case_openings["new_items"].map(lambda x: item_json[f'{x[0]["data-classid"]}_{x[0]["data-instanceid"]}']["market_name"]))
-    case_openings = case_openings.assign(case_name = case_openings["lost_items"].map(lambda x: next(item for item in [ item_json[f'{it["data-classid"]}_{it["data-instanceid"]}']["market_name"] for it in x] if "Key" not in item)))
-    case_openings = case_openings.assign(new_item_rarity = case_openings["new_items"].map(lambda x: next(item["name"] for item in item_json[f'{x[0]["data-classid"]}_{x[0]["data-instanceid"]}']["tags"] if item["category"] == "Rarity")))
+    case_openings = case_openings.assign(new_item_name = case_openings["new_items"].map(lambda x: get_item_name(x, item_json)))
+    case_openings = case_openings.assign(case_name = case_openings["lost_items"].map(lambda x: get_case_name(x, item_json)))
+    case_openings = case_openings.assign(new_item_rarity = case_openings["new_items"].map(lambda x: get_item_rarity(x, item_json)))
 
     weapon_cases = case_openings[~case_openings["new_item_name"].str.contains("Sticker")]
     weapon_cases = weapon_cases[~weapon_cases["case_name"].str.contains("Pins")]
