@@ -275,7 +275,16 @@ def get_inventory_history(session):
         for num, app in enumerate(filter_apps):
             req_data[f"app[{num}]"] = app
         response = session.get(profile_link+"/inventoryhistory/", params=req_data)
-        if response.status_code != 200:
+
+        rate_limited = (response.status_code != 200)
+
+        if not rate_limited:
+            try:
+                response_JSON = json.loads(response.text)
+            except:
+                rate_limited = True
+
+        if rate_limited:
             print("")
             for i in range(40, 0, -1):
                 print(f"\rWaiting for {i:02d} seconds due to steam rate limit", end="")
@@ -283,11 +292,7 @@ def get_inventory_history(session):
             print("\r                                                                 ", end="")
             print("\rContinuing")
             continue
-        try:
-            response_JSON = json.loads(response.text)
-        except:
-            continue
-
+        
         if "html" in response_JSON:
             try:
                 additional_history = create_inventory_history_dict(response_JSON["html"], history)
