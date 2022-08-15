@@ -292,7 +292,7 @@ def get_inventory_history(session):
             print("\r                                                                 ", end="")
             print("\rContinuing")
             continue
-        
+
         if "html" in response_JSON:
             try:
                 additional_history = create_inventory_history_dict(response_JSON["html"], history)
@@ -300,7 +300,8 @@ def get_inventory_history(session):
                 continue
             history = {**history,  **additional_history}
         if "descriptions" in response_JSON:
-            item_dict = {**item_dict, **response_JSON["descriptions"]["730"]}
+            if "730" in response_JSON["descriptions"]:
+                item_dict = {**item_dict, **response_JSON["descriptions"]["730"]}
         if "cursor" in response_JSON:
             cursor = response_JSON["cursor"]
             if "time" in cursor:
