@@ -324,9 +324,14 @@ def get_inventory_history(session):
     return history, item_dict
 
 def get_item_name(x, item_json):
+    if "data-classid" not in x[0] or "data-instanceid" not in x[0]:
+        return "Unknown"
     class_instance = f'{x[0]["data-classid"]}_{x[0]["data-instanceid"]}'
     if class_instance in item_json:
-        return item_json[class_instance]["market_name"]
+        if "market_name" in item_json[class_instance]:
+            return item_json[class_instance]["market_name"]
+        else:
+            return class_instance
     else:
         return class_instance
 
