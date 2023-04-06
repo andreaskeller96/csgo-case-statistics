@@ -336,6 +336,8 @@ def get_item_name(x, item_json):
         return class_instance
 
 def get_item_rarity(x, item_json):
+    if "data-classid" not in x[0] or "data-instanceid" not in x[0]:
+        return "Unknown"
     class_instance = f'{x[0]["data-classid"]}_{x[0]["data-instanceid"]}'
     if class_instance in item_json:
         return next(item["name"] for item in item_json[class_instance]["tags"] if item["category"] == "Rarity")
@@ -343,6 +345,8 @@ def get_item_rarity(x, item_json):
         return class_instance
 
 def get_case_name (x, item_json):
+    if "data-classid" not in x[0] or "data-instanceid" not in x[0]:
+        return "Unknown"
     class_instance = f'{x[0]["data-classid"]}_{x[0]["data-instanceid"]}'
     
     if class_instance in item_json:
