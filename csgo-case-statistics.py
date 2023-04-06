@@ -324,6 +324,10 @@ def get_inventory_history(session):
     return history, item_dict
 
 def get_item_name(x, item_json):
+    try:
+        test = x[0]
+    except:
+        return "Unknown"
     if "data-classid" not in x[0] or "data-instanceid" not in x[0]:
         return "Unknown"
     class_instance = f'{x[0]["data-classid"]}_{x[0]["data-instanceid"]}'
@@ -336,6 +340,10 @@ def get_item_name(x, item_json):
         return class_instance
 
 def get_item_rarity(x, item_json):
+    try:
+        test = x[0]
+    except:
+        return "Unknown"
     if "data-classid" not in x[0] or "data-instanceid" not in x[0]:
         return "Unknown"
     class_instance = f'{x[0]["data-classid"]}_{x[0]["data-instanceid"]}'
@@ -345,6 +353,10 @@ def get_item_rarity(x, item_json):
         return class_instance
 
 def get_case_name (x, item_json):
+    try:
+        test = x[0]
+    except:
+        return "Unknown"
     if "data-classid" not in x[0] or "data-instanceid" not in x[0]:
         return "Unknown"
     class_instance = f'{x[0]["data-classid"]}_{x[0]["data-instanceid"]}'
